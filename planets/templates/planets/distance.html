@@ -1,0 +1,14 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Distance to {{ planet_name|capfirst }}</title>
+    <link rel="stylesheet" href="{% static 'planets/style.css' %}">
+</head>
+<body>
+    <h1>Distance to {{ planet_name|capfirst }}</h1>
+    <p>{{ distance|intcomma }} km</p>
+    <a href="{% url 'home' %}">Back</a>
+</body>
+</html>

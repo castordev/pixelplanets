@@ -1,0 +1,13 @@
+# Ignorar el archivo de efemérides de Skyfield
+de440.bsp
+
+# Archivos de Python comunes
+*.pyc
+__pycache__/
+
+# Base de datos local
+db.sqlite3
+
+# Entornos virtuales
+venv/
+.env

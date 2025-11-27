@@ -1,0 +1,19 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Planets Distance</title>
+    <link rel="stylesheet" href="{% static 'planets/style.css' %}">
+</head>
+<body>
+    <h1>Planets Distance from Vigo</h1>
+    <div>
+        {% for planet in planets %}
+            <form action="{% url 'distance' planet %}" method="get" style="display:inline-block; margin:5px;">
+                <button type="submit">{{ planet|capfirst }}</button>
+            </form>
+        {% endfor %}
+    </div>
+</body>
+</html>
