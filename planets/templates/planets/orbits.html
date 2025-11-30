@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Órbitas del Sistema Solar</title>
+<link rel="stylesheet" href="{% static 'planets/style-orbits.css' %}">
+</head>
+<body>
+
+<button id="toggleSidebar" class="open-btn">☰</button>
+<div id="sidebar" class="sidebar">
+  <nav>
+    <ul>
+      <li><a href="{% url 'orbits' %}">Orbits</a></li>
+      <li><a href="{% url 'pagina2' %}">Página 2</a></li>
+      <li><a href="{% url 'pagina3' %}">Página 3</a></li>
+    </ul>
+  </nav>
+</div>
+
+<main>
+  <div class="solar-box">
+    <svg viewBox="0 0 900 900" class="solar-system">
+      <!-- Sol -->
+      <circle cx="450" cy="450" r="30" fill="#ffcc00" />
+
+      <!-- Órbitas -->
+      {% for name, pos in positions.items %}
+      <circle cx="450" cy="450" r="{{ pos.radius }}" stroke="rgba(255,255,255,0.3)" fill="none" stroke-dasharray="4"/>
+      {% endfor %}
+
+      <!-- Planetas -->
+      {% for name, pos in positions.items %}
+      <circle id="{{ name }}" r="12" fill="#aaa" />
+      {% endfor %}
+    </svg>
+  </div>
+</main>
+
+<!-- Pasar datos al JS de manera segura -->
+<script id="positions-data" type="application/json">{{ positions|safe }}</script>
+<script id="periods-data" type="application/json">{{ periods|safe }}</script>
+
+<script src="{% static 'planets/sidebar.js' %}"></script>
+<script src="{% static 'planets/orbits.js' %}"></script>
+</body>
+</html>

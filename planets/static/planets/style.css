@@ -36,3 +36,50 @@ button:hover {
     font-size: 22px;
     margin-top: 20px;
 }
+
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -250px; /* oculto inicialmente */
+  width: 250px;
+  height: 100%;
+  background: rgba(20,20,30,0.95);
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+  transition: left 0.3s ease;
+  z-index: 1000;
+}
+
+.sidebar nav ul {
+  list-style: none;
+  padding-top: 2rem;
+  padding-left: 0;
+}
+
+.sidebar nav ul li {
+  margin: 0px 0;
+}
+
+.sidebar nav ul li a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.sidebar.open {
+  left: 0;
+}
+
+.open-btn {
+  position: fixed;
+  top: 16px;
+  left: 5px;
+  font-size: 24px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  z-index: 1100;
+}

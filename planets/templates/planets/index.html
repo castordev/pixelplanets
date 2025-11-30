@@ -7,6 +7,21 @@
     <link rel="stylesheet" href="{% static 'planets/style.css' %}">
 </head>
 <body>
+
+<button id="toggleSidebar" class="open-btn">☰</button>
+
+<div id="sidebar" class="sidebar">
+  <nav>
+    <ul>
+        <li><a href="{% url 'orbits' %}">Orbits</a></li>
+        <li><a href="{% url 'pagina2' %}">Página 2</a></li>
+        <li><a href="{% url 'pagina3' %}">Página 3</a></li>
+    </ul>
+  </nav>
+</div>
+
+
+
     <h1>Planets Distance from Vigo</h1>
     <div>
 
@@ -21,5 +36,8 @@
         {% endfor %}
 
     </div>
+
+
+    <script src="{% static 'planets/sidebar.js' %}"></script>
 </body>
 </html>
