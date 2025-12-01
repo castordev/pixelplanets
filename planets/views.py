@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from .planets_distance import get_distance
-from skyfield.api import load
+from skyfield.api import load, utc
 import math
+import json
+from datetime import datetime
 
 def home_view(request):       
     planets = ["mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]
@@ -10,21 +12,29 @@ def home_view(request):
 def distance_view(request, planet_name):
     try:
         distance = get_distance(planet_name)
-        return render(request, 'planets/distance.html', {'planet_name': planet_name, 'distance': int(distance)})
+        return render(request, 'planets/distance.html', {
+            'planet_name': planet_name,
+            'distance': int(distance)
+        })
     except KeyError:
         return render(request, 'planets/error.html', {'message': 'Planet not found.'})
 
 def orbits(request):
-    # Cargar efemérides y tiempo actual
+    # Procesar la fecha seleccionada
+    date_str = request.GET.get('date')
+    if date_str:
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=utc)
+    else:
+        selected_date = datetime.utcnow().replace(tzinfo=utc)
+
     ts = load.timescale()
-    t = ts.now()
+    t = ts.from_datetime(selected_date)
     bodies = load('de421.bsp')
     sun = bodies['sun']
 
-    planets = ['mercury','venus','earth','mars','jupiter','saturn','uranus','neptune']
-    radii = [80, 120, 160, 200, 260, 320, 380, 440]  # radios fijos para SVG
+    planet_names = ['mercury','venus','earth','mars','jupiter','saturn','uranus','neptune']
+    radii = [80, 120, 160, 200, 260, 320, 380, 440]
 
-    # Mapeo Skyfield
     sf_planets = {
         'mercury': bodies['mercury'],
         'venus': bodies['venus'],
@@ -37,16 +47,14 @@ def orbits(request):
     }
 
     positions = {}
-    for i, name in enumerate(planets):
-        planet = sf_planets[name]
-        vec = sun.at(t).observe(planet).position.km
-        angle = math.atan2(vec[1], vec[0])  # posición angular real
+    for i, name in enumerate(planet_names):
+        vec = sun.at(t).observe(sf_planets[name]).position.km
+        angle = math.atan2(vec[1], vec[0])
         positions[name] = {
             'radius': radii[i],
             'angle': angle
         }
 
-    # Períodos orbitales en días (para animación)
     periods = {
         'mercury': 88,
         'venus': 225,
@@ -59,8 +67,9 @@ def orbits(request):
     }
 
     return render(request, 'planets/orbits.html', {
-        'positions': positions,
-        'periods': periods
+        'positions_json': json.dumps(positions),
+        'periods_json': json.dumps(periods),
+        'selected_date': selected_date.strftime('%Y-%m-%d')
     })
 
 def pagina2(request):

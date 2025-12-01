@@ -20,28 +20,39 @@
   </nav>
 </div>
 
+<form method="get" id="date-form">
+    <label for="date">Selecciona fecha:</label>
+    <input type="date" id="date" name="date" value="{{ selected_date }}">
+    <button type="submit">Ver</button>
+</form>
+
 <main>
   <div class="solar-box">
-    <svg viewBox="0 0 900 900" class="solar-system">
+    <svg viewBox="0 0 1100 1100" class="solar-system">
       <!-- Sol -->
-      <circle cx="450" cy="450" r="30" fill="#ffcc00" />
+      <circle cx="550" cy="550" r="30" fill="#ffcc00" />
 
       <!-- Órbitas -->
       {% for name, pos in positions.items %}
-      <circle cx="450" cy="450" r="{{ pos.radius }}" stroke="rgba(255,255,255,0.3)" fill="none" stroke-dasharray="4"/>
+        <circle cx="550" cy="550" r="{{ pos.radius }}" stroke="rgba(255,255,255,0.3)" fill="none" stroke-dasharray="4"/>
       {% endfor %}
 
       <!-- Planetas -->
-      {% for name, pos in positions.items %}
-      <circle id="{{ name }}" r="12" fill="#aaa" />
-      {% endfor %}
+      <circle id="mercury" r="12" fill="#aaa"></circle>
+      <circle id="venus" r="12" fill="#f5d"></circle>
+      <circle id="earth" r="12" fill="#2b8f6b"></circle>
+      <circle id="mars" r="12" fill="#c94b2a"></circle>
+      <circle id="jupiter" r="12" fill="#c08b5a"></circle>
+      <circle id="saturn" r="12" fill="#d3b88a"></circle>
+      <circle id="uranus" r="12" fill="#7fc8d8"></circle>
+      <circle id="neptune" r="12" fill="#4369b8"></circle>
     </svg>
   </div>
 </main>
 
-<!-- Pasar datos al JS de manera segura -->
-<script id="positions-data" type="application/json">{{ positions|safe }}</script>
-<script id="periods-data" type="application/json">{{ periods|safe }}</script>
+<!-- Pasar datos al JS -->
+<script id="positions-data" type="application/json">{{ positions_json|safe }}</script>
+<script id="periods-data" type="application/json">{{ periods_json|safe }}</script>
 
 <script src="{% static 'planets/sidebar.js' %}"></script>
 <script src="{% static 'planets/orbits.js' %}"></script>

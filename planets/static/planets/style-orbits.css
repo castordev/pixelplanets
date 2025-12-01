@@ -38,11 +38,10 @@ main {
   height: auto;
 }
 
-/* Sidebar */
 .sidebar {
   position: fixed;
   top: 0;
-  left: -250px; /* oculto inicialmente */
+  left: -250px;
   width: 250px;
   height: 100%;
   background: rgba(20,20,30,0.95);
