@@ -8,12 +8,31 @@ body {
   min-height: 100vh;
 }
 
-header, footer {
+
+header {
+  display: flex;                 /*  clave */
+  justify-content: space-between;/*  izquierda / derecha */
+  align-items: center;
+  padding: 16px;
+  background: rgba(0,0,0,0.7);
+}
+
+footer {
   text-align: center;
   padding: 16px;
   background: rgba(0,0,0,0.7);
 }
 
+/* ===== Selector de fecha ===== */
+header input[type="date"] {
+  padding: 6px 10px;
+  background: #000814;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 6px;
+}
+
+/* ===== MAIN ===== */
 main {
   flex: 1;
   display: flex;
@@ -38,6 +57,7 @@ main {
   height: auto;
 }
 
+/* ===== SIDEBAR ===== */
 .sidebar {
   position: fixed;
   top: 0;
@@ -74,11 +94,24 @@ main {
 .open-btn {
   position: fixed;
   top: 16px;
-  left: 5px;
+  left: 10px;
   font-size: 24px;
   background: none;
   border: none;
   color: white;
   cursor: pointer;
   z-index: 1100;
+}
+
+.orbits-header {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+}
+
+#date-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
