@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
@@ -7,4 +7,5 @@ urlpatterns = [
     path('orbits/', views.orbits, name='orbits'),  # tu página 1
     path('pagina2/', views.pagina2, name='pagina2'),  # página 2
     path('pagina3/', views.pagina3, name='pagina3'),  # página 3
+    path("__reload__/", include("django_browser_reload.urls")),
 ]
