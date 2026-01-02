@@ -33,7 +33,17 @@ def orbits(request):
     sun = bodies['sun']
 
     planet_names = ['mercury','venus','earth','mars','jupiter','saturn','uranus','neptune']
-    radii = [80, 120, 160, 200, 260, 320, 380, 440]
+    # Progressive radii: smaller gaps near center, increasing outward (geometric)
+    base = 60
+    growth = 1.35
+    raw_radii = [base * (growth ** i) for i in range(len(planet_names))]
+    # Scale radii so the outermost orbit nearly touches the SVG frame without overflowing.
+    svg_center = 800
+    margin = 40
+    max_allow = svg_center - margin
+    max_raw = max(raw_radii) if raw_radii else 1
+    scale = (max_allow / max_raw) if max_raw > 0 else 1
+    radii = [round(r * scale) for r in raw_radii]
 
     sf_planets = {
         'mercury': bodies['mercury'],
@@ -69,7 +79,8 @@ def orbits(request):
     return render(request, 'planets/orbits.html', {
         'positions_json': json.dumps(positions),
         'periods_json': json.dumps(periods),
-        'selected_date': selected_date.strftime('%Y-%m-%d')
+        'selected_date': selected_date.strftime('%Y-%m-%d'),
+        'radii_list': radii,
     })
 
 def pagina2(request):

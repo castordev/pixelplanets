@@ -33,29 +33,34 @@
 <main>
   <div class="solar-frame">
     <div class="solar-box">
-      <svg viewBox="0 0 1100 1100" class="solar-system">
-        <!-- Sol -->
-        <circle cx="550" cy="550" r="30" fill="#ffcc00" />
+      <svg viewBox="0 0 1600 1600" class="solar-system" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <!-- Sol (GIF) -->
+        <image
+          id="sun"
+          href="{% static 'planets/gifs/sun.gif' %}"
+          xlink:href="{% static 'planets/gifs/sun.gif' %}"
+          x="740" y="740"
+          width="120" height="120"
+          preserveAspectRatio="xMidYMid meet"
+        ></image>
 
-        <!-- Órbitas de los planetas (estáticas) -->
-        <circle class="orbit" cx="550" cy="550" r="80" fill="none"></circle>
-        <circle class="orbit" cx="550" cy="550" r="120" fill="none"></circle>
-        <circle class="orbit" cx="550" cy="550" r="160" fill="none"></circle>
-        <circle class="orbit" cx="550" cy="550" r="200" fill="none"></circle>
-        <circle class="orbit" cx="550" cy="550" r="260" fill="none"></circle>
-        <circle class="orbit" cx="550" cy="550" r="320" fill="none"></circle>
-        <circle class="orbit" cx="550" cy="550" r="380" fill="none"></circle>
-        <circle class="orbit" cx="550" cy="550" r="440" fill="none"></circle>
+        <!-- Órbitas de los planetas (generadas desde radii_list) -->
+        {% for r in radii_list %}
+          <circle class="orbit" cx="800" cy="800" r="{{ r }}" fill="none"></circle>
+        {% endfor %}
 
-        <!-- Planetas -->
-        <circle id="mercury" r="12" fill="#aaa"></circle>
-        <circle id="venus" r="12" fill="#f5d"></circle>
-        <circle id="earth" r="12" fill="#2b8f6b"></circle>
-        <circle id="mars" r="12" fill="#c94b2a"></circle>
-        <circle id="jupiter" r="12" fill="#c08b5a"></circle>
-        <circle id="saturn" r="12" fill="#d3b88a"></circle>
-        <circle id="uranus" r="12" fill="#7fc8d8"></circle>
-        <circle id="neptune" r="12" fill="#4369b8"></circle>
+        <!-- Cinturón de asteroides (puntos generados por JS) -->
+        <g id="asteroid-belt"></g>
+
+        <!-- Planetas (GIF/PNG) -->
+        <image id="mercury" href="{% static 'planets/gifs/mercury.gif' %}" xlink:href="{% static 'planets/gifs/mercury.gif' %}" width="40" height="40" preserveAspectRatio="xMidYMid meet"></image>
+        <image id="venus" href="{% static 'planets/gifs/venus.gif' %}" xlink:href="{% static 'planets/gifs/venus.gif' %}" width="44" height="44" preserveAspectRatio="xMidYMid meet"></image>
+        <image id="earth" href="{% static 'planets/gifs/earth.gif' %}" xlink:href="{% static 'planets/gifs/earth.gif' %}" width="44" height="44" preserveAspectRatio="xMidYMid meet"></image>
+        <image id="mars" href="{% static 'planets/gifs/mars.gif' %}" xlink:href="{% static 'planets/gifs/mars.gif' %}" width="42" height="42" preserveAspectRatio="xMidYMid meet"></image>
+        <image id="jupiter" href="{% static 'planets/gifs/jupiter.gif' %}" xlink:href="{% static 'planets/gifs/jupiter.gif' %}" width="60" height="60" preserveAspectRatio="xMidYMid meet"></image>
+        <image id="saturn" href="{% static 'planets/gifs/saturn.gif' %}" xlink:href="{% static 'planets/gifs/saturn.gif' %}" width="60" height="60" preserveAspectRatio="xMidYMid meet"></image>
+        <image id="uranus" href="{% static 'planets/gifs/uranus.png' %}" xlink:href="{% static 'planets/gifs/uranus.png' %}" width="52" height="52" preserveAspectRatio="xMidYMid meet"></image>
+        <image id="neptune" href="{% static 'planets/gifs/neptune.gif' %}" xlink:href="{% static 'planets/gifs/neptune.gif' %}" width="52" height="52" preserveAspectRatio="xMidYMid meet"></image>
       </svg>
     </div>
   </div>
@@ -66,10 +71,10 @@
       <div class="form-group">
         <label for="date">Fecha:</label>
         <div class="date-input-wrap">
-          <input type="date" id="date" name="date" value="{{ selected_date }}" readonly class="date-input">
+          <input type="text" id="date" name="date" value="{{ selected_date }}" class="date-input" placeholder="YYYY-MM-DD">
           <button type="button" id="calendar-btn" class="btn calendar-btn" aria-label="Abrir calendario">📅</button>
-          <!-- Botón Ver a la derecha del calendario -->
-          <button type="submit" class="btn btn-submit date-submit">Ver</button>
+          <!-- Contenedor para el datepicker personalizado -->
+          <div id="custom-datepicker" class="custom-datepicker" aria-hidden="true"></div>
         </div>
       </div>
 

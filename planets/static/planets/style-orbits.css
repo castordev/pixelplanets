@@ -66,7 +66,7 @@ main {
 /* ===== Caja interior sistema solar ===== */
 .solar-box {
   width: 55vw;
-  max-width: 720px;
+  max-width: 760px;
   aspect-ratio: 1 / 1;
   background: rgba(0, 0, 0, 0.65);
   display: flex;
@@ -148,7 +148,7 @@ main {
   padding: 12px 16px;
   font-size: 14px;
   font-family: monospace;
-  cursor: pointer;
+  cursor: text;
 
   box-shadow:
     inset 0 0 0 2px #000814,
@@ -176,12 +176,99 @@ main {
   padding: 6px 8px;
   font-size: 14px;
   line-height: 1;
-  background: #1b1f3a;
-  color: #fff;
-  border: 4px solid black;
-  box-shadow: 4px 4px 0 #3656d4;
+  background: transparent;
+  color: #00ff00;
+  border: none;
+  box-shadow: none;
   border-radius: 0;
   cursor: pointer;
+  z-index: 2;
+}
+
+.date-input {
+  position: relative;
+  z-index: 1;
+}
+
+.date-submit {
+  margin-top: 8px;
+}
+
+/* ===== Datepicker personalizado (solo días del mes) ===== */
+.custom-datepicker {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: rgba(6,10,20,0.95);
+  color: #00ff00;
+  border: 4px solid #4a7fff;
+  padding: 8px;
+  z-index: 60;
+  width: 240px;
+  box-shadow: 4px 4px 0 #3656d4;
+  display: none;
+}
+
+.custom-datepicker.open {
+  display: block;
+}
+
+.custom-datepicker .dp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.dp-nav-btn {
+  background: transparent;
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dp-title {
+  font-size: 13px;
+  color: #ff99ff;
+}
+
+.dp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  font-size: 11px;
+  color: #b0b0b0;
+  margin-bottom: 4px;
+}
+
+.dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.dp-day {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #00ff00;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.dp-day.disabled {
+  color: #2a2a2a;
+  cursor: default;
+}
+
+.dp-day:hover:not(.disabled) {
+  background: rgba(74,127,255,0.15);
 }
 
 .calendar-btn:focus {
