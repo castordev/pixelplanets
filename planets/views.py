@@ -36,7 +36,13 @@ def _get_skyfield():
         eph_path = base_dir / 'de421.bsp'
         if not eph_path.exists():
             eph_path = base_dir / 'de440.bsp'
-        SKYFIELD_BODIES = load(str(eph_path))
+        if eph_path.exists():
+            SKYFIELD_BODIES = load(str(eph_path))
+        else:
+            # Last resort: let Skyfield download de421.bsp into its cache directory.
+            # In serverless environments this may add cold-start latency, so we
+            # also download during Vercel build in build_files.sh.
+            SKYFIELD_BODIES = load('de421.bsp')
     return SKYFIELD_TS, SKYFIELD_BODIES
 
 

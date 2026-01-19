@@ -2,3 +2,5 @@ django
 numpy
 skyfield
 astroquery
+whitenoise
+django-browser-reload
