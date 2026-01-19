@@ -97,45 +97,49 @@ window.addEventListener('DOMContentLoaded', () => {
     function buildPlanetText(apiData, notes) {
         const lines = [];
         const planetKey = (apiData.planet || '').toLowerCase();
-        lines.push(`Day length: ${formatNumber(apiData.day_length_hours, 2)} hours`);
+        
+        // Helper to format a line with label:value coloring
+        const labelVal = (label, value) => `<span class="modal-label">${label}:</span> <span class="modal-value">${value}</span>`;
+        
+        lines.push(labelVal('Day length', `${formatNumber(apiData.day_length_hours, 2)} hours`));
         // Omitir la longitud del año en días terrestres para la Tierra (redundante)
         // y para el Sol (no aplica / no queremos mostrarlo).
         if (planetKey !== 'earth' && planetKey !== 'sun') {
-            lines.push(`Year length: ${formatNumber(apiData.year_length_earth_days, 2)} Earth days`);
+            lines.push(labelVal('Year length', `${formatNumber(apiData.year_length_earth_days, 2)} Earth days`));
         }
         // Para el Sol, ocultar también el "year length" en días locales.
         if (planetKey !== 'sun' && apiData.year_length_local_days !== null && apiData.year_length_local_days !== undefined) {
-            lines.push(`Year length: ${formatNumber(apiData.year_length_local_days, 2)} local days`);
+            lines.push(labelVal('Year length', `${formatNumber(apiData.year_length_local_days, 2)} local days`));
         }
-        lines.push(`Gravity: ${formatNumber(apiData.gravity_ms2, 2)} m/s²`);
-        lines.push(`Mean temperature: ${formatMaybeInt(apiData.mean_temperature_c)} °C`);
-        lines.push(`Atmosphere: ${apiData.atmosphere || '—'}`);
+        lines.push(labelVal('Gravity', `${formatNumber(apiData.gravity_ms2, 2)} m/s²`));
+        lines.push(labelVal('Mean temperature', `${formatMaybeInt(apiData.mean_temperature_c)} °C`));
+        lines.push(labelVal('Atmosphere', apiData.atmosphere || '—'));
         if (apiData.composition) {
-            lines.push(`Composition: ${apiData.composition}`);
+            lines.push(labelVal('Composition', apiData.composition));
         }
         // Para el Sol, no mostrar número de lunas.
         if (planetKey !== 'sun') {
-            lines.push(`Moons: ${apiData.moons ?? '—'}`);
+            lines.push(labelVal('Moons', apiData.moons ?? '—'));
         }
         lines.push('');
 
         // Para el Sol, ocultar: orbit progress y day-of-year.
         if (planetKey !== 'sun') {
-            lines.push(`Orbit progress on ${apiData.date}: ${(Number(apiData.year_progress) * 100).toFixed(1)}%`);
+            lines.push(labelVal(`Orbit progress on ${noWrap(apiData.date)}`, `${(Number(apiData.year_progress) * 100).toFixed(1)}%`));
             // Omitir "Day of year" en escala de días terrestres para la Tierra (redundante)
             if (planetKey !== 'earth') {
-                lines.push(`Day of year (Earth-day scale): ${apiData.day_of_year_earth_days} / ${formatNumber(apiData.year_length_earth_days, 0)}`);
+                lines.push(labelVal('Day of year (Earth-day scale)', `${apiData.day_of_year_earth_days} / ${formatNumber(apiData.year_length_earth_days, 0)}`));
             }
             if (apiData.day_of_year_local_days !== null && apiData.day_of_year_local_days !== undefined) {
-                lines.push(`Day of year (local-day scale): ${apiData.day_of_year_local_days} / ${formatNumber(apiData.year_length_local_days, 0)}`);
+                lines.push(labelVal('Day of year (local-day scale)', `${apiData.day_of_year_local_days} / ${formatNumber(apiData.year_length_local_days, 0)}`));
             }
         }
         const notesText = String(notes ?? '').trim();
         const isPlaceholderNotes = /^write your notes\b/i.test(notesText);
         if (notesText && !isPlaceholderNotes) {
             lines.push('');
-            lines.push('Notes:');
-            lines.push(notesText);
+            lines.push(`<span class="modal-label">Notes:</span>`);
+            lines.push(`<span class="modal-value">${escapeHtml(notesText)}</span>`);
         }
         return lines.join('\n');
     }
@@ -145,6 +149,10 @@ window.addEventListener('DOMContentLoaded', () => {
         return String(s || '').replace(/[&<>"']/g, (c) => {
             return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
         });
+    }
+
+    function noWrap(value) {
+        return `<span class="no-wrap">${escapeHtml(value)}</span>`;
     }
 
     // Get a usable image src for a planet: prefer the existing SVG image element's
@@ -176,16 +184,20 @@ window.addEventListener('DOMContentLoaded', () => {
             const w = rect.width || 320;
             const h = rect.height || 180;
 
-            let left = point.x + offset;
-            let top = point.y + offset;
+            const spaceRight = window.innerWidth - margin - (point.x + offset);
+            const spaceLeft = (point.x - offset) - margin;
+            const spaceBelow = window.innerHeight - margin - (point.y + offset);
+            const spaceAbove = (point.y - offset) - margin;
 
-            // If it would overflow to the right, try placing to the left of the point
-            if (left + w > window.innerWidth - margin) {
+            // Prefer placing to the right/bottom, but flip when there isn't room.
+            let left = point.x + offset;
+            if (spaceRight < w && spaceLeft > spaceRight) {
                 left = point.x - offset - w;
             }
-            // If it would overflow to the bottom, clamp upward
-            if (top + h > window.innerHeight - margin) {
-                top = window.innerHeight - margin - h;
+
+            let top = point.y + offset;
+            if (spaceBelow < h && spaceAbove > spaceBelow) {
+                top = point.y - offset - h;
             }
 
             left = Math.min(Math.max(margin, left), window.innerWidth - margin - w);
@@ -237,7 +249,7 @@ window.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 // ignore
             }
-            const imgHtml = `<img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(title)}" style="width:${Math.round(imgWidth)}px;height:auto;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);flex:0 0 auto">`;
+            const imgHtml = `<img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(title)}" style="width:${Math.round(imgWidth)}px;height:auto;border-radius:8px;flex:0 0 auto">`;
 
             // Extra info for the Sun: show ONLY the next predicted storm time.
             if (planetId === 'sun') {
@@ -247,15 +259,18 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (swRes.ok) {
                         const sw = await swRes.json();
                         const nextStorm = sw.next_predicted_geomagnetic_storm_utc || '—';
-                        text += `\n\nNext predicted solar storm (UTC): ${nextStorm}`;
+                        text += `\n\n<span class="modal-label">Next predicted solar storm (UTC):</span> <span class="modal-value">${noWrap(nextStorm)}</span>`;
                     }
                 } catch {
                     // ignore, we keep the base Sun info
                 }
             }
 
-            // Render modal with image + text (apply any extra text appended above)
-            modalBody.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px">${imgHtml}<pre style="margin:0;white-space:pre-wrap;font-family:inherit">${escapeHtml(text)}</pre></div>`;
+            // Render modal with image + text (text contains HTML for label/value colors)
+            modalBody.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px">${imgHtml}<pre style="margin:0;white-space:pre-wrap;font-family:inherit">${text}</pre></div>`;
+
+            // Content can change modal size; reposition to avoid clipping.
+            if (point) requestAnimationFrame(() => positionModalNearPoint(point));
         } catch (err) {
             modalBody.textContent = `Could not load data. ${String(err && err.message ? err.message : err)}`;
         }
@@ -282,25 +297,80 @@ window.addEventListener('DOMContentLoaded', () => {
         modal.addEventListener('click', (e) => e.stopPropagation());
     }
 
-    for (let planet in positions) {
-        const el = document.getElementById(planet);
-        if (!el) continue;
+    // Posicionar planetas en el SVG (reutilizable para updates sin recargar)
+    function applyPositions(posMap) {
+        if (!posMap) return;
+        for (let planet in posMap) {
+            const el = document.getElementById(planet);
+            if (!el) continue;
 
-        const pos = positions[planet];
-        const r = (radiusMap[planet] !== undefined) ? radiusMap[planet] : pos.radius;
-        const cx = center + r * Math.cos(pos.angle);
-        const cy = center - r * Math.sin(pos.angle);
+            const pos = posMap[planet];
+            const r = (radiusMap[planet] !== undefined) ? radiusMap[planet] : pos.radius;
+            const cx = center + r * Math.cos(pos.angle);
+            const cy = center - r * Math.sin(pos.angle);
 
-        // Support both <circle> (cx/cy) and <image> (x/y)
-        const tag = (el.tagName || '').toLowerCase();
-        if (tag === 'image') {
-            const w = parseFloat(el.getAttribute('width')) || 24;
-            const h = parseFloat(el.getAttribute('height')) || 24;
-            el.setAttribute('x', cx - (w / 2));
-            el.setAttribute('y', cy - (h / 2));
-        } else {
-            el.setAttribute('cx', cx);
-            el.setAttribute('cy', cy);
+            // Support both <circle> (cx/cy) and <image> (x/y)
+            const tag = (el.tagName || '').toLowerCase();
+            if (tag === 'image') {
+                const w = parseFloat(el.getAttribute('width')) || 24;
+                const h = parseFloat(el.getAttribute('height')) || 24;
+                el.setAttribute('x', cx - (w / 2));
+                el.setAttribute('y', cy - (h / 2));
+            } else {
+                el.setAttribute('cx', cx);
+                el.setAttribute('cy', cy);
+            }
+        }
+    }
+
+    // initial placement from server-rendered JSON
+    applyPositions(positions);
+
+    // === Cambiar fecha SIN recargar (fetch a /api/orbit-positions/) ===
+    const dateForm = document.getElementById('date-form');
+    let lastRequestToken = 0;
+
+    function setUrlDateParam(dateStr, push = true) {
+        try {
+            const url = new URL(window.location.href);
+            if (dateStr) url.searchParams.set('date', dateStr);
+            if (push) history.pushState({ date: dateStr }, '', url);
+            else history.replaceState({ date: dateStr }, '', url);
+        } catch {
+            // ignore
+        }
+    }
+
+    async function updateOrbitsForDate(dateStr, opts = {}) {
+        const options = { pushHistory: true, ...opts };
+        if (!dateStr) return;
+        const token = ++lastRequestToken;
+
+        try {
+            const url = `/api/orbit-positions/?date=${encodeURIComponent(dateStr)}`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data && data.error) throw new Error(data.error);
+            if (token !== lastRequestToken) return; // respuesta vieja
+
+            const normalized = data.date || dateStr;
+            if (dateInput) dateInput.value = normalized;
+            applyPositions(data.positions || {});
+
+            // update moon panel
+            try { updateMoonPanel(new Date(normalized)); } catch (err) {}
+
+            if (options.pushHistory) setUrlDateParam(normalized, true);
+            else setUrlDateParam(normalized, false);
+        } catch (err) {
+            // Fallback a recarga completa si algo falla
+            if (dateForm) {
+                dateForm.submit();
+            } else {
+                setUrlDateParam(dateStr, true);
+                window.location.reload();
+            }
         }
     }
     
@@ -323,8 +393,8 @@ window.addEventListener('DOMContentLoaded', () => {
             
             planet.addEventListener('mousemove', (e) => {
                 // Cerca del puntero, pero sin taparlo
-                tooltip.style.left = (e.clientX + 10) + 'px';
-                tooltip.style.top = (e.clientY + 10) + 'px';
+                tooltip.style.left = (e.clientX + 25) + 'px';
+                tooltip.style.top = (e.clientY + 25) + 'px';
             });
             
             planet.addEventListener('mouseleave', () => {
@@ -424,7 +494,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Button to set today's date
     const todayBtn = document.getElementById('today-btn');
-    const dateForm = document.getElementById('date-form');
     const calendarBtn = document.getElementById('calendar-btn');
     const customPicker = document.getElementById('custom-datepicker');
 
@@ -433,7 +502,9 @@ window.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const today = new Date().toISOString().split('T')[0];
             dateInput.value = today;
-            if (dateForm) dateForm.submit();
+            // update moon panel immediately, then submit
+            try { updateMoonPanel(new Date(today)); } catch (err) {}
+            updateOrbitsForDate(today);
         });
     }
 
@@ -487,9 +558,12 @@ window.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 const day = Number(btn.getAttribute('data-day'));
                 const chosen = new Date(year, month, day);
-                dateInput.value = formatDateYMD(chosen);
+                const chosenStr = formatDateYMD(chosen);
+                dateInput.value = chosenStr;
                 hideDatepicker();
-                if (dateForm) dateForm.submit();
+                // update moon panel immediately so user sees phase before navigation
+                try { updateMoonPanel(chosen); } catch (err) {}
+                updateOrbitsForDate(chosenStr);
             });
         });
     }
@@ -500,6 +574,7 @@ window.addEventListener('DOMContentLoaded', () => {
         renderDatepicker(base);
         customPicker.classList.add('open');
         customPicker.setAttribute('aria-hidden', 'false');
+        try { if (typeof placeMoonPanel === 'function') placeMoonPanel(); } catch (e) {}
         document.addEventListener('click', outsideClickHandler);
     }
 
@@ -507,6 +582,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!customPicker) return;
         customPicker.classList.remove('open');
         customPicker.setAttribute('aria-hidden', 'true');
+        try { if (typeof placeMoonPanel === 'function') placeMoonPanel(); } catch (e) {}
         document.removeEventListener('click', outsideClickHandler);
     }
 
@@ -522,6 +598,72 @@ window.addEventListener('DOMContentLoaded', () => {
             if (customPicker && customPicker.classList.contains('open')) hideDatepicker(); else showDatepicker();
         });
     }
+
+    // --- Moon phase helper functions ---
+    function _julianDate(d) {
+        return d.getTime() / 86400000 + 2440587.5;
+    }
+
+    function moonAgeDays(date) {
+        // approximate using known new moon reference (2000-01-06 18:14 UTC)
+        const ref = new Date(Date.UTC(2000, 0, 6, 18, 14, 0));
+        const synodic = 29.53058867; // days
+        const diff = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - ref.getTime();
+        const days = diff / 86400000;
+        const age = (days % synodic + synodic) % synodic; // 0..synodic
+        return age;
+    }
+
+    function moonPhaseNameAndFile(date) {
+        const age = moonAgeDays(date);
+        // boundaries for 8 phases (approx)
+        if (age < 1.84566) return { name: 'New Moon', file: 'new_moon.png' };
+        if (age < 5.53699) return { name: 'Waxing Crescent', file: 'waxig_crescent.png' };
+        if (age < 9.22831) return { name: 'First Quarter', file: 'first_quarter.png' };
+        if (age < 12.91963) return { name: 'Waxing Gibbous', file: 'waxing_gibbous.png' };
+        if (age < 16.61096) return { name: 'Full Moon', file: 'full_moon.png' };
+        if (age < 20.30228) return { name: 'Waning Gibbous', file: 'waning_gibbous.png' };
+        if (age < 23.99361) return { name: 'Last Quarter', file: 'last_quarter.png' };
+        if (age < 27.68493) return { name: 'Waning Crescent', file: 'waning_crescent.png' };
+        return { name: 'New Moon', file: 'new_moon.png' };
+    }
+
+    function updateMoonPanel(date) {
+        if (!date) return;
+        const el = document.getElementById('moon-phase-img');
+        const label = document.getElementById('moon-phase-label');
+        if (!el) return;
+        const d = (date instanceof Date) ? date : new Date(date);
+        if (isNaN(d.getTime())) return;
+        const info = moonPhaseNameAndFile(d);
+        el.src = `/static/planets/imgs/moon/${info.file}`;
+        el.alt = info.name;
+        if (label) label.textContent = info.name;
+    }
+
+    // initialize moon panel from current input value or today
+    try {
+        const initial = dateInput && dateInput.value ? new Date(dateInput.value) : new Date();
+        updateMoonPanel(initial);
+        // position the moon panel under the date panel (to the right of the solar system)
+        function placeMoonPanel() {
+            const panel = document.getElementById('moon-panel');
+            const datePanel = document.querySelector('.date-control-panel');
+            if (!panel || !datePanel) return;
+            const rect = datePanel.getBoundingClientRect();
+            // place just below date panel and centered horizontally relative to it
+            panel.style.position = 'absolute';
+            const panelW = panel.offsetWidth || panel.getBoundingClientRect().width || 200;
+            const left = rect.left + window.scrollX + Math.round((rect.width - panelW) / 2);
+            // nudge panel slightly left so it's a bit offset from perfect center
+            const nudgeLeft = -30; // pixels, negative moves left
+            panel.style.left = (left + nudgeLeft) + 'px';
+            panel.style.top = (rect.bottom + window.scrollY + 20) + 'px';
+        }
+        placeMoonPanel();
+        window.addEventListener('resize', placeMoonPanel);
+        window.addEventListener('scroll', placeMoonPanel);
+    } catch (err) {}
 
     function normalizeAndValidateDate() {
         if (!dateInput) return false;
@@ -539,17 +681,19 @@ window.addEventListener('DOMContentLoaded', () => {
     if (dateInput) {
         dateInput.addEventListener('change', () => {
             if (normalizeAndValidateDate()) {
-                if (dateForm) dateForm.submit();
+                updateOrbitsForDate(dateInput.value);
             } else {
                 // leave value for user to correct
             }
         });
         if (dateForm) {
             dateForm.addEventListener('submit', (e) => {
+                e.preventDefault();
                 if (!normalizeAndValidateDate()) {
-                    e.preventDefault();
                     alert('Invalid date. Use YYYY-MM-DD or a recognizable date.');
+                    return;
                 }
+                updateOrbitsForDate(dateInput.value);
             });
         }
     }
@@ -562,10 +706,27 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!dateInput) return;
         const base = dateInput.value ? new Date(dateInput.value) : new Date();
         base.setDate(base.getDate() + days);
-        dateInput.value = base.toISOString().split('T')[0];
-        if (dateForm) dateForm.submit();
+        const next = base.toISOString().split('T')[0];
+        dateInput.value = next;
+        updateOrbitsForDate(next);
     }
 
     if (prevBtn) prevBtn.addEventListener('click', (e) => { e.preventDefault(); changeDateBy(-1); });
     if (nextBtn) nextBtn.addEventListener('click', (e) => { e.preventDefault(); changeDateBy(1); });
+
+    // back/forward: actualizar planetas según la URL
+    window.addEventListener('popstate', () => {
+        try {
+            const url = new URL(window.location.href);
+            const d = url.searchParams.get('date');
+            if (d && dateInput) {
+                dateInput.value = d;
+                if (normalizeAndValidateDate()) {
+                    updateOrbitsForDate(dateInput.value, { pushHistory: false });
+                }
+            }
+        } catch {
+            // ignore
+        }
+    });
 });

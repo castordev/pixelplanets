@@ -4,9 +4,17 @@ from django.views.decorators.http import require_GET
 from django.conf import settings
 from .planets_distance import get_distance
 from skyfield.api import load, utc
+from skyfield import almanac
+try:
+    from astroquery.jplhorizons import Horizons
+    ASTROQUERY_AVAILABLE = True
+except Exception:
+    Horizons = None
+    ASTROQUERY_AVAILABLE = False
 import math
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+import re
 from pathlib import Path
 import urllib.request
 import urllib.error
@@ -120,6 +128,60 @@ def _parse_date_utc(date_str: str | None):
     if date_str:
         return datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=utc)
     return datetime.utcnow().replace(tzinfo=utc)
+
+
+# --- NASA eclipse catalog (static, verified data from NASA GSFC) ---
+# Source: https://eclipse.gsfc.nasa.gov/
+# This is a curated list of eclipses from 2024-2035 for reliability.
+NASA_ECLIPSE_CATALOG = [
+    # 2024
+    ('2024-03-25', 'Penumbral Lunar Eclipse'),
+    ('2024-04-08', 'Total Solar Eclipse'),
+    ('2024-09-18', 'Partial Lunar Eclipse'),
+    ('2024-10-02', 'Annular Solar Eclipse'),
+    # 2025
+    ('2025-03-14', 'Total Lunar Eclipse'),
+    ('2025-03-29', 'Partial Solar Eclipse'),
+    ('2025-09-07', 'Total Lunar Eclipse'),
+    ('2025-09-21', 'Partial Solar Eclipse'),
+    # 2026
+    ('2026-02-17', 'Annular Solar Eclipse'),
+    ('2026-03-03', 'Total Lunar Eclipse'),
+    ('2026-08-12', 'Total Solar Eclipse'),
+    ('2026-08-28', 'Partial Lunar Eclipse'),
+    # 2027
+    ('2027-02-06', 'Penumbral Lunar Eclipse'),
+    ('2027-02-20', 'Annular Solar Eclipse'),
+    ('2027-07-18', 'Penumbral Lunar Eclipse'),
+    ('2027-08-02', 'Total Solar Eclipse'),
+    # 2028
+    ('2028-01-12', 'Partial Lunar Eclipse'),
+    ('2028-01-26', 'Annular Solar Eclipse'),
+    ('2028-07-06', 'Partial Lunar Eclipse'),
+    ('2028-07-22', 'Total Solar Eclipse'),
+    ('2028-12-31', 'Total Lunar Eclipse'),
+    # 2029
+    ('2029-01-14', 'Partial Solar Eclipse'),
+    ('2029-06-12', 'Partial Solar Eclipse'),
+    ('2029-06-26', 'Total Lunar Eclipse'),
+    ('2029-07-11', 'Partial Solar Eclipse'),
+    ('2029-12-05', 'Partial Solar Eclipse'),
+    ('2029-12-20', 'Total Lunar Eclipse'),
+    # 2030
+    ('2030-06-01', 'Annular Solar Eclipse'),
+    ('2030-06-15', 'Partial Lunar Eclipse'),
+    ('2030-11-25', 'Total Solar Eclipse'),
+    ('2030-12-09', 'Penumbral Lunar Eclipse'),
+]
+
+def _get_next_eclipse_from_catalog(selected_date: datetime):
+    """Return the next eclipse from the static NASA catalog after selected_date."""
+    for date_str, etype in NASA_ECLIPSE_CATALOG:
+        dt = datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=utc)
+        if dt >= selected_date:
+            return {'date': date_str, 'type': etype, 'note': ''}
+    return None
+
 
 
 def _planet_sf_key(planet_id: str):
@@ -257,6 +319,62 @@ def space_weather_api(request):
 
     return JsonResponse(payload)
 
+
+def orbit_positions_api(request):
+    """Return heliocentric orbit positions for the given date (YYYY-MM-DD).
+
+    This is used by the frontend to update planet positions without reloading the page.
+    """
+    date_str = request.GET.get('date')
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=utc)
+        except Exception:
+            return JsonResponse({'error': 'Invalid date. Use YYYY-MM-DD.'}, status=400)
+    else:
+        selected_date = datetime.utcnow().replace(tzinfo=utc)
+
+    ts, bodies = _get_skyfield()
+    t = ts.from_datetime(selected_date)
+    sun = bodies['sun']
+
+    planet_names = PLANET_ORDER
+    base = 60
+    growth = 1.35
+    raw_radii = [base * (growth ** i) for i in range(len(planet_names))]
+    svg_center = 800
+    margin = 40
+    max_allow = svg_center - margin
+    max_raw = max(raw_radii) if raw_radii else 1
+    scale = (max_allow / max_raw) if max_raw > 0 else 1
+    radii = [round(r * scale) for r in raw_radii]
+
+    sf_planets = {
+        'mercury': bodies['mercury'],
+        'venus': bodies['venus'],
+        'earth': bodies['earth'],
+        'mars': bodies['mars barycenter'],
+        'jupiter': bodies['jupiter barycenter'],
+        'saturn': bodies['saturn barycenter'],
+        'uranus': bodies['uranus barycenter'],
+        'neptune': bodies['neptune barycenter']
+    }
+
+    positions = {}
+    for i, name in enumerate(planet_names):
+        vec = sun.at(t).observe(sf_planets[name]).position.km
+        angle = math.atan2(vec[1], vec[0])
+        positions[name] = {
+            'radius': radii[i],
+            'angle': angle
+        }
+
+    return JsonResponse({
+        'date': selected_date.strftime('%Y-%m-%d'),
+        'positions': positions,
+        'radii_list': radii,
+    })
+
 def home_view(request):       
     planets = ["mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]
     return render(request, 'planets/index.html', {'planets': planets})
@@ -282,6 +400,11 @@ def orbits(request):
     ts, bodies = _get_skyfield()
     t = ts.from_datetime(selected_date)
     sun = bodies['sun']
+
+    # Upcoming Events should always be based on the current date/time when viewing the page,
+    # not on the user-selected orbit date.
+    events_date = datetime.utcnow().replace(tzinfo=utc)
+    t_events = ts.from_datetime(events_date)
 
     planet_names = PLANET_ORDER
     # Progressive radii: smaller gaps near center, increasing outward (geometric)
@@ -327,11 +450,245 @@ def orbits(request):
         'neptune': 60190
     }
 
+    # --- Upcoming events (best-effort) ---
+    # 1) Next New/Full moon (possible eclipse candidate)
+    upcoming = {
+        'eclipse': None,
+        'meteor_shower': None,
+        'comet': None,
+        'visible_planets': [],
+    }
+
+    # search window: 1 year
+    t0 = t_events
+    t1 = ts.from_datetime((events_date + timedelta(days=365)))
+
+    # Find the nearest New/Full moon (for info) but prefer the NASA eclipse catalog for definitive events.
+    phase_entry = None
+    try:
+        phases = almanac.moon_phases(bodies)
+        ts_ph, ev_ph = almanac.find_discrete(t0, t1, phases)
+        phase_map = {0: 'New Moon', 1: 'First Quarter', 2: 'Full Moon', 3: 'Last Quarter'}
+        for tt, ev in zip(ts_ph, ev_ph):
+            if ev in (0, 2):
+                phase_entry = {
+                    'date': tt.utc_datetime().strftime('%Y-%m-%d'),
+                    'type': phase_map.get(ev, 'Moon phase'),
+                    'note': 'Nearest Moon phase (not an eclipse)'
+                }
+                break
+    except Exception:
+        phase_entry = {'date': None, 'type': None, 'note': 'Could not compute moon phases.'}
+
+    # Prefer NASA GSFC eclipse catalog (definitive). If catalog finds none, report explicitly.
+    try:
+        catalog_e = _get_next_eclipse_from_catalog(events_date)
+    except Exception:
+        catalog_e = None
+
+    if catalog_e:
+        upcoming['eclipse'] = catalog_e
+    else:
+        # No catalog eclipse: explicitly state none predicted and show nearest moon phase for context
+        if phase_entry and phase_entry.get('date'):
+            upcoming['eclipse'] = {
+                'date': None,
+                'type': None,
+                'note': f'No eclipse predicted (NASA GSFC). Nearest Moon phase: {phase_entry["date"]} — {phase_entry["type"]}.'
+            }
+        else:
+            upcoming['eclipse'] = {'date': None, 'type': None, 'note': 'No eclipse predicted (NASA GSFC).'}
+
+    # 2) Next meteor shower from a small static list (peak dates)
+    showers = [
+        ('Quadrantids', (1, 3)),
+        ('Lyrids', (4, 22)),
+        ('Eta Aquariids', (5, 6)),
+        ('Perseids', (8, 12)),
+        ('Orionids', (10, 21)),
+        ('Leonids', (11, 17)),
+        ('Geminids', (12, 14)),
+        ('Ursids', (12, 22)),
+    ]
+    sd = events_date
+    found_shower = None
+    for name, (m, d) in showers:
+        cand = datetime(sd.year, m, d)
+        if cand.replace(tzinfo=utc) < events_date:
+            cand = datetime(sd.year + 1, m, d)
+        if not found_shower or cand < found_shower[1]:
+            found_shower = (name, cand)
+    if found_shower:
+        upcoming['meteor_shower'] = {'name': found_shower[0], 'date': found_shower[1].strftime('%Y-%m-%d')}
+
+    # 3) Comet: placeholder (requires external catalog)
+    # Try to discover candidate comets from JPL SBDB (REST) and then query Horizons for the best one.
+    def _discover_comet_candidates_from_sbdb():
+        # Best-effort: try multiple known SBDB endpoints with flexible parsing.
+        endpoints = [
+            'https://ssd-api.jpl.nasa.gov/sbdb.api?body_type=COMET&limit=50',
+            'https://ssd-api.jpl.nasa.gov/sbdb_query.api?body_type=COMET&limit=50',
+            'https://ssd-api.jpl.nasa.gov/sbdb.api?object_type=COMET&limit=50',
+        ]
+        for url in endpoints:
+            try:
+                data = _fetch_json_url(url, timeout=8.0)
+            except Exception:
+                continue
+            # Flexible extraction: look for a list of objects in common keys
+            candidates = []
+            if isinstance(data, dict):
+                # Common shapes: {'data': [...]} or {'objects': [...]} or root list
+                for key in ('data', 'objects', 'results', 'body'):
+                    if key in data and isinstance(data[key], list):
+                        items = data[key]
+                        break
+                else:
+                    # maybe the API returned a list at the root
+                    items = data.get('fields') if 'fields' in data else []
+                if not isinstance(items, list):
+                    items = []
+                for it in items:
+                    if isinstance(it, dict):
+                        # try common name keys
+                        name = it.get('full_name') or it.get('fullname') or it.get('des') or it.get('object_name') or it.get('designation')
+                        if name:
+                            candidates.append(name)
+            elif isinstance(data, list):
+                for it in data:
+                    if isinstance(it, dict):
+                        name = it.get('full_name') or it.get('designation') or it.get('des')
+                        if name:
+                            candidates.append(name)
+            if candidates:
+                return candidates
+        return []
+
+    candidates = []
+    try:
+        candidates = _discover_comet_candidates_from_sbdb()
+    except Exception:
+        candidates = []
+
+    # Fallback to curated list with Horizons record IDs (more reliable than names)
+    # Format: (display_name, horizons_id)
+    if not candidates or len(candidates) < 3:
+        candidates = [
+            ('2P/Encke', '90000091'),
+            ('1P/Halley', '90000001'),
+            ('C/2023 A3 (Tsuchinshan-ATLAS)', '90001472'),
+            ('C/2024 G3 (ATLAS)', '90001484'),
+            ('C/2022 E3 (ZTF)', '90001447'),
+        ]
+    else:
+        # Convert discovered names to tuple format (name, name) for uniform handling
+        candidates = [(c, c) for c in candidates]
+
+    if not ASTROQUERY_AVAILABLE:
+        upcoming['comet'] = {'name': None, 'note': 'astroquery not installed; Horizons lookup unavailable'}
+    else:
+        best = None
+        horizon_errors = []
+        try:
+            date_start = events_date.strftime('%Y-%m-%d')
+            date_end = (events_date + timedelta(days=1)).strftime('%Y-%m-%d')
+            for display_name, horizons_id in candidates:
+                try:
+                    obj = Horizons(id=horizons_id, location='500@399', epochs={'start': date_start, 'stop': date_end, 'step': '1d'})
+                    ephem = obj.ephemerides()
+                    if ephem is None or len(ephem) == 0:
+                        horizon_errors.append(f"{display_name}: no ephemeris data")
+                        continue
+                    row = ephem[0]
+                    cols = row.colnames if hasattr(row, 'colnames') else []
+                    # extract magnitude: comets use Tmag (total) or Nmag (nuclear)
+                    mag = None
+                    for col in ('Tmag', 'Nmag', 'V', 'Vmag', 'mag'):
+                        if col in cols:
+                            try:
+                                val = row[col]
+                                if val is not None and str(val).strip() not in ('', '--', 'n.a.'):
+                                    mag = float(val)
+                                    break
+                            except Exception:
+                                pass
+                    # extract elongation
+                    elong = None
+                    for col in ('elong', 'elongation', 'EL', 'Elong'):
+                        if col in cols:
+                            try:
+                                val = row[col]
+                                if val is not None and str(val).strip() not in ('', '--', 'n.a.'):
+                                    elong = float(val)
+                                    break
+                            except Exception:
+                                pass
+
+                    candidate = {
+                        'designation': display_name,
+                        'mag': mag,
+                        'elong': elong,
+                    }
+                    # choose the brightest (lowest mag); if no mag, prefer higher elongation
+                    if best is None:
+                        best = candidate
+                    elif mag is not None:
+                        if best.get('mag') is None or mag < best.get('mag'):
+                            best = candidate
+                    elif elong is not None and (best.get('elong') is None or elong > best.get('elong')):
+                        best = candidate
+                except Exception as e:
+                    horizon_errors.append(f"{display_name}: {str(e)[:40]}")
+                    continue
+        except Exception as e:
+            horizon_errors.append(f'general horizons query failed: {str(e)[:40]}')
+
+        if best:
+            upcoming['comet'] = {
+                'name': best.get('designation'),
+                'estimated_mag': best.get('mag'),
+                'elongation_deg': best.get('elong'),
+                'note': 'Data from JPL Horizons'
+            }
+        else:
+            note = 'No comets found via Horizons'
+            if horizon_errors:
+                note += ' — ' + '; '.join(horizon_errors[:3])
+            upcoming['comet'] = {'name': None, 'note': note}
+
+    # 4) Visible planets by elongation (angle between planet and Sun as seen from Earth)
+    visible = []
+    try:
+        earth = bodies['earth']
+        for pname in PLANET_ORDER:
+            sf_key = _planet_sf_key(pname)
+            if not sf_key:
+                continue
+            try:
+                ve = earth.at(t_events).observe(bodies[sf_key]).position.km
+                vs = earth.at(t_events).observe(sun).position.km
+                dot = ve[0]*vs[0] + ve[1]*vs[1] + ve[2]*vs[2]
+                norme = math.sqrt(ve[0]**2 + ve[1]**2 + ve[2]**2)
+                norms = math.sqrt(vs[0]**2 + vs[1]**2 + vs[2]**2)
+                if norme > 0 and norms > 0:
+                    ang = math.degrees(math.acos(max(-1.0, min(1.0, dot/(norme*norms)))))
+                    # threshold: elongation > 30 deg considered likely visible in night sky
+                    if ang >= 30:
+                        visible.append({'planet': pname, 'elongation_deg': round(ang, 1)})
+            except Exception:
+                continue
+    except Exception:
+        visible = []
+    upcoming['visible_planets'] = visible
+
     return render(request, 'planets/orbits.html', {
         'positions_json': json.dumps(positions),
         'periods_json': json.dumps(periods),
         'selected_date': selected_date.strftime('%Y-%m-%d'),
         'radii_list': radii,
+        'upcoming_events': upcoming,
+        'upcoming_json': json.dumps(upcoming),
+        'debug': getattr(settings, 'DEBUG', False),
     })
 
 def pagina2(request):

@@ -3,6 +3,11 @@
   box-sizing: border-box;
 }
 
+/* Utility: keep tokens like dates on one line */
+.no-wrap {
+  white-space: nowrap;
+}
+
 /* ===== Dither Pattern (usando solo colores de colors.css) ===== */
 /* Patrón de dither 2x2 pixelado */
 .dither-pattern {
@@ -282,6 +287,14 @@ main {
     inset 2px 2px 0 var(--color-4),
     inset -2px -2px 0 var(--color-10),
     8px 8px 0 var(--color-10);
+
+  /* Keep the popup usable on short viewports */
+  max-height: calc(100vh - 24px);
+}
+
+.planet-modal .win-content {
+  max-height: calc(100vh - 90px);
+  overflow: auto;
 }
 
 .planet-modal-body {
@@ -291,6 +304,15 @@ main {
   color: var(--color-1);
 }
 
+/* Modal label/value colors for planet info popup */
+.modal-label {
+  color: var(--color-4); /* #6fa341 - green accent */
+  font-weight: 600;
+}
+.modal-value {
+  color: #cad670; /* requested value color */
+}
+
 .planet-modal-close {
   cursor: url('/static/planets/imgs/pointer.png') 0 0, pointer;
 }
@@ -298,17 +320,19 @@ main {
 /* ===== DATE CONTROL PANEL ===== */
 .date-control-panel {
   position: absolute;
-  top: 30%;
+  top: 15%;
   left: calc(50% + min(30vw, 430px) + 60px);
   transform: translateY(-50%);
-  z-index: 1150;
+  /* Above the Moon panel so the dropdown calendar isn't hidden behind it */
+  z-index: 1250;
 
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 15px;
+  gap: 10px;
 
-  min-width: 320px;
+  width: 280px;
+  min-width: 280px;
   height: fit-content;
   flex-shrink: 0;
 }
@@ -320,7 +344,7 @@ main {
 }
 
 .date-control-panel .win-content {
-  padding: 20px 24px;
+  padding: 14px 18px;
   width: 100%;
 }
 
@@ -328,20 +352,20 @@ main {
 #date-form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
   width: 100%;
 }
 
 .date-nav-row {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 /* ===== Inputs Pixel Style ===== */
@@ -426,7 +450,8 @@ main {
   border: 4px solid;
   border-color: var(--color-3) var(--color-10) var(--color-10) var(--color-3);
   padding: 8px;
-  z-index: 60;
+  /* Inside the date panel; keep high so it overlays local UI */
+  z-index: 1400;
   width: 260px;
   box-shadow: 
     inset 2px 2px 0 var(--color-4),
@@ -579,11 +604,52 @@ main {
     position: static;
     transform: none;
     margin: 20px auto 0;
+
+    /* Let it adapt on small screens */
+    width: min(320px, 92vw);
+    min-width: 0;
   }
 
   .solar-box {
     width: 90vw;
   }
+}
+
+/* ===== Moon panel ===== */
+.moon-panel {
+  position: absolute;
+  /* positioned dynamically via JS so it sits under the date panel
+     and to the right of the solar-frame without moving existing elements */
+  top: auto;
+  left: auto;
+  z-index: 1150;
+  min-width: 200px;
+  image-rendering: pixelated;
+}
+
+.moon-panel .win-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+}
+
+.moon-content {
+  text-align: center;
+}
+
+.moon-img {
+  width: 100px;
+  height: 100px;
+  image-rendering: pixelated;
+  display: block;
+  margin: 0 auto 8px auto;
+}
+
+.moon-label {
+  font-size: 10px;
+  font-family: 'PressStart2P', 'Press Start 2P', monospace;
+  color: var(--color-1);
 }
 
 /* ===== Custom pointer cursor (pixel art) ===== */
