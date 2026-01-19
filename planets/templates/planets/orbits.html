@@ -5,6 +5,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planets</title>
+<script>
+  (function(){
+    try {
+      var k = 'planets_crt_on';
+      var v = localStorage.getItem(k);
+      if (v === null || v === '1') document.documentElement.classList.add('crt-on');
+    } catch(e) {}
+  })();
+</script>
 <link rel="stylesheet" href="{% static 'planets/style-orbits.css' %}">
   <link rel="stylesheet" href="{% static 'planets/colors.css' %}">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">

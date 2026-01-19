@@ -3,7 +3,10 @@
 
   function readStoredCrt() {
     try {
-      return localStorage.getItem(CRT_STORAGE_KEY) === '1';
+      const v = localStorage.getItem(CRT_STORAGE_KEY);
+      // Default to ON (true) when the key is missing so CRT is enabled by default
+      if (v === null) return true;
+      return v === '1';
     } catch {
       return false;
     }

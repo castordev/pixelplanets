@@ -12,7 +12,17 @@
     <title>Distance to {{ planet_name|capfirst }}</title>       <!-- "{{" estas llaves las utiliza django para insertar el valor de una variable dentro del html -->
                                                                 <!-- |capfirst es un filtro de django que pone la primera letra en mayuscula-->
 
-    <link rel="stylesheet" href="{% static 'planets/style.css' %}">
+        <script>
+            (function(){
+                try {
+                    var k = 'planets_crt_on';
+                    var v = localStorage.getItem(k);
+                    if (v === null || v === '1') document.documentElement.classList.add('crt-on');
+                } catch(e) {}
+            })();
+        </script>
+
+        <link rel="stylesheet" href="{% static 'planets/style.css' %}">
 </head>
 <body>
 
